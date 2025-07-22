@@ -5,4 +5,4 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
-    return {"message": f"Hello from CI/CD with ArgoCD! Updated at {datetime.datetime.now()}"}
+    return {"message": f"Hello from CI/CD with Pull Request! Current time: {datetime.datetime.now()}"}
