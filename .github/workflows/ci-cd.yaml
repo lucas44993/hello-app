@@ -33,7 +33,6 @@ jobs:
         token: ${{ secrets.PAT }}
         path: ./manifests
 
-    # ... (partes anteriores do seu workflow) ...
 
     - name: Update image tag in manifests
       run: |
