@@ -33,13 +33,12 @@ jobs:
         token: ${{ secrets.PAT }}
         path: ./manifests
 
-
     - name: Update image tag in manifests
       run: |
-       cd ./manifests
-       sed -i 's|image: vege503/hello-app:.*|image: vege503/hello-app@${{ steps.docker_build.outputs.digest }}|g' deployment.yaml
-       git config user.name "github-actions[bot]"
-       git config user.email "github-actions[bot]@users.noreply.github.com"
-       git add deployment.yaml
-       git commit -m "Update hello-app image to ${{ steps.docker_build.outputs.digest }}"
-       git push
+        cd ./manifests
+        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app:latest|g' deployment.yaml
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add deployment.yaml
+        git commit -m "Update hello-app image to latest"
+        git push
