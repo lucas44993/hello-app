@@ -163,32 +163,108 @@ jobs:
       with:
         context: .
         push: true
-        tags: vege503/hello-app:latest
+        tags: vege503/hello-app:${{ github.sha }}
 
     - name: Checkout manifests repository
       uses: actions/checkout@v3
       with:
         repository: lucas44993/hello-manifests
         token: ${{ secrets.PAT }}
-        path: ./manifests
 
-    - name: Update image tag in manifests
+    - name: Configure Git for Pull Request
       run: |
-        cd ./manifests
-        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app:latest|g' deployment.yaml
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Update image tag in deployment.yaml
+      id: update_manifest
+      run: |
+        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app@${{ steps.docker_build.outputs.digest }}|g' deployment.yaml
+        
         if ! git diff --quiet --exit-code deployment.yaml; then
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add deployment.yaml
-          git commit -m "Update hello-app image to latest"
-          git push
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+          echo "Changes detected in deployment.yaml. Ready to create Pull Request."
         else
-          echo "No changes detected in deployment.yaml. Image tag is already set to latest."
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          echo "No changes detected in deployment.yaml. Skipping Pull Request."
         fi
-      shell: /usr/bin/bash -e {0}
+
+    - name: Create Pull Request
+      if: steps.update_manifest.outputs.changes_detected == 'true'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.PAT }}
+        commit-message: "feat(app): Update hello-app image to ${{ steps.docker_build.outputs.digest }}"
+        title: "Atualização da Imagem hello-app para novo SHA"
+        body: |
+          Este Pull Request atualiza a tag da imagem `hello-app` para o novo SHA: `${{ steps.docker_build.outputs.digest }}` no `deployment.yaml`.
+          Disparado por push no repositório da aplicação.
+        branch: "update-image-tag-${{ github.sha }}" 
+        base: "main" 
+        delete-branch: true
 ```
 
 3.  Adicione e faça push do arquivo `ci-cd.yaml` para o seu repositório `[SEU_USUARIO_GITHUB]/hello-app`.
+
+> **Como funciona a atualização automática do manifest:**
+>
+> Após o build e push da nova imagem Docker, o workflow executa as seguintes etapas:
+>
+> 1. **Checkout do repositório de manifests:**
+>    ```yaml
+>    - name: Checkout manifests repository
+>      uses: actions/checkout@v3
+>      with:
+>        repository: lucas44993/hello-manifests
+>        token: ${{ secrets.PAT }}
+>    ```
+>    O workflow faz o checkout do repositório [`hello-manifests`](https://github.com/lucas44993/hello-manifests) usando um token de acesso pessoal (PAT) para permitir alterações e criação de Pull Requests.
+>
+> 2. **Configuração do Git para Pull Request:**
+>    ```yaml
+>    - name: Configure Git for Pull Request
+>      run: |
+>        git config --global user.name "github-actions[bot]"
+>        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+>    ```
+>    Define o nome e e-mail do usuário git para que os commits e Pull Requests sejam atribuídos ao bot do GitHub Actions.
+>
+> 3. **Atualização do deployment.yaml:**
+>    ```yaml
+>    - name: Update image tag in deployment.yaml
+>      id: update_manifest
+>      run: |
+>        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app@${{ steps.docker_build.outputs.digest }}|g' deployment.yaml
+>        
+>        if ! git diff --quiet --exit-code deployment.yaml; then
+>          echo "changes_detected=true" >> $GITHUB_OUTPUT
+>          echo "Changes detected in deployment.yaml. Ready to create Pull Request."
+>        else
+>          echo "changes_detected=false" >> $GITHUB_OUTPUT
+>          echo "No changes detected in deployment.yaml. Skipping Pull Request."
+>        fi
+>    ```
+>    Atualiza a referência da imagem Docker no arquivo `deployment.yaml` para o novo digest gerado no build. Se houver alteração, sinaliza que um Pull Request deve ser criado.
+>
+> 4. **Criação automática do Pull Request:**
+>    ```yaml
+>    - name: Create Pull Request
+>      if: steps.update_manifest.outputs.changes_detected == 'true'
+>      uses: peter-evans/create-pull-request@v5
+>      with:
+>        token: ${{ secrets.PAT }}
+>        commit-message: "feat(app): Update hello-app image to ${{ steps.docker_build.outputs.digest }}"
+>        title: "Atualização da Imagem hello-app para novo SHA"
+>        body: |
+>          Este Pull Request atualiza a tag da imagem `hello-app` para o novo SHA: `${{ steps.docker_build.outputs.digest }}` no `deployment.yaml`.
+>          Disparado por push no repositório da aplicação.
+>        branch: "update-image-tag-${{ github.sha }}" 
+>        base: "main" 
+>        delete-branch: true
+>    ```
+>    Se houver alteração, um Pull Request é criado automaticamente para revisão e merge, garantindo rastreabilidade e controle das atualizações de versão no cluster Kubernetes.
+>
+> ![Exemplo de Pull Request automático de atualização de imagem](imgs/pull%20request.png)
 
 ### 3.5. Instalar e Acessar o ArgoCD no Kubernetes
 
@@ -316,3 +392,4 @@ jobs:
     * ![Print do comando kubectl get pods](imgs/podscmd.png)
 * ☑ **Print da resposta da aplicação via `curl` ou navegador (antes e depois da atualização):**
     * ![Sucesso no navegador e via curl](imgs/sucessoweb.png)
+    * ![Pull Request atualizado refletido no pod](imgs/pullsucesso.png)
