@@ -43,11 +43,12 @@ jobs:
       run: |
         cd ./manifests
         sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app:latest|g' deployment.yaml
+        
         if ! git diff --quiet --exit-code deployment.yaml; then
-          echo "::set-output name=changes_detected::true"
+          echo "changes_detected=true" >> $GITHUB_OUTPUT # Sintaxe atualizada
           echo "Changes detected in deployment.yaml. Ready to create Pull Request."
         else
-          echo "::set-output name=changes_detected::false"
+          echo "changes_detected=false" >> $GITHUB_OUTPUT # Sintaxe atualizada
           echo "No changes detected in deployment.yaml. Skipping Pull Request."
         fi
 
@@ -59,3 +60,9 @@ jobs:
         commit-message: "chore(app): Update hello-app image to latest"
         title: "Atualização da Imagem hello-app para latest"
         body: |
+          Este Pull Request atualiza a tag da imagem `hello-app` para `latest` no `deployment.yaml`.
+          Disparado por push no repositório da aplicação.
+        branch: "update-image-tag-${{ github.sha }}"
+        base: "main"
+        delete-branch: true
+        directory: ./manifests
