@@ -1,7 +1,8 @@
 from fastapi import FastAPI
+import datetime
 
 app = FastAPI()
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": f"Hello from CI/CD with ArgoCD! Updated at {datetime.datetime.now()}"}
