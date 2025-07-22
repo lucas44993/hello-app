@@ -24,14 +24,13 @@ jobs:
       with:
         context: .
         push: true
-        tags: vege503/hello-app:latest
+        tags: vege503/hello-app:${{ github.sha }}
 
     - name: Checkout manifests repository
       uses: actions/checkout@v3
       with:
         repository: lucas44993/hello-manifests
         token: ${{ secrets.PAT }}
-        # REMOVIDO: path: ./manifests - Não precisamos mais de um subdiretório para o checkout.
 
     - name: Configure Git for Pull Request
       run: |
@@ -41,8 +40,7 @@ jobs:
     - name: Update image tag in deployment.yaml
       id: update_manifest
       run: |
-        # REMOVIDO: cd ./manifests - Não precisamos mais mudar de diretório.
-        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app:latest|g' deployment.yaml # Agora opera na raiz do checkout
+        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app@${{ steps.docker_build.outputs.digest }}|g' deployment.yaml
         
         if ! git diff --quiet --exit-code deployment.yaml; then
           echo "changes_detected=true" >> $GITHUB_OUTPUT
@@ -57,11 +55,11 @@ jobs:
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.PAT }}
-        commit-message: "chore(app): Update hello-app image to latest"
-        title: "Atualização da Imagem hello-app para latest"
+        commit-message: "feat(app): Update hello-app image to ${{ steps.docker_build.outputs.digest }}"
+        title: "Atualização da Imagem hello-app para novo SHA"
         body: |
-          Este Pull Request atualiza a tag da imagem `hello-app` para `latest` no `deployment.yaml`.
+          Este Pull Request atualiza a tag da imagem `hello-app` para o novo SHA: `${{ steps.docker_build.outputs.digest }}` no `deployment.yaml`.
           Disparado por push no repositório da aplicação.
-        branch: "update-image-tag-${{ github.sha }}"
-        base: "main"
+        branch: "update-image-tag-${{ github.sha }}" 
+        base: "main" 
         delete-branch: true
