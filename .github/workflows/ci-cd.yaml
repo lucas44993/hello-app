@@ -31,7 +31,7 @@ jobs:
       with:
         repository: lucas44993/hello-manifests
         token: ${{ secrets.PAT }}
-        path: ./manifests
+        # REMOVIDO: path: ./manifests - Não precisamos mais de um subdiretório para o checkout.
 
     - name: Configure Git for Pull Request
       run: |
@@ -41,14 +41,14 @@ jobs:
     - name: Update image tag in deployment.yaml
       id: update_manifest
       run: |
-        cd ./manifests
-        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app:latest|g' deployment.yaml
+        # REMOVIDO: cd ./manifests - Não precisamos mais mudar de diretório.
+        sed -i 's|image: vege503/hello-app[:@].*|image: vege503/hello-app:latest|g' deployment.yaml # Agora opera na raiz do checkout
         
         if ! git diff --quiet --exit-code deployment.yaml; then
-          echo "changes_detected=true" >> $GITHUB_OUTPUT # Sintaxe atualizada
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
           echo "Changes detected in deployment.yaml. Ready to create Pull Request."
         else
-          echo "changes_detected=false" >> $GITHUB_OUTPUT # Sintaxe atualizada
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
           echo "No changes detected in deployment.yaml. Skipping Pull Request."
         fi
 
@@ -65,4 +65,3 @@ jobs:
         branch: "update-image-tag-${{ github.sha }}"
         base: "main"
         delete-branch: true
-        directory: ./manifests
